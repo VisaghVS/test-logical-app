@@ -1,0 +1,151 @@
+const https = require('https');
+
+module.exports = async function (context, req) {
+    try {
+        // 1. Get the email from the POST body
+        const email = req.body && (req.body.email || req.body.emailAddress);
+
+        if (!email) {
+            context.res = {
+                status: 400,
+                body: { error: 'Please provide an email address in the JSON body.' }
+            };
+            return;
+        }
+
+        // 2. Get LOGIC_APP_URL from Environment Variables
+        const logicAppUrl = process.env.LOGIC_APP_URL;
+        if (!logicAppUrl) {
+            context.res = {
+                status: 500,
+                body: { error: 'LOGIC_APP_URL is missing in Environment Variables.' }
+            };
+            return;
+        }
+
+        const postData = JSON.stringify({ emailAddress: email });
+
+        // 3. Call the Logic App URL using built-in https module
+        const logicAppStatus = await new Promise((resolve, reject) => {
+            const request = https.request(logicAppUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(postData)
+                }
+            }, (response) => {
+                response.resume();
+                resolve(response.statusCode);
+            });
+
+            request.on('error', reject);
+            request.write(postData);
+            request.end();
+        });
+
+        // 4. Return success response
+        context.res = {
+            status: 200,
+            body: {
+                status: 'triggered',
+                logicAppStatus: logicAppStatus,
+                email: email
+            }
+        };
+    } catch (err) {
+        context.log.error('Function failed:', err);
+        context.res = {
+            status: 500,
+            body: { error: err.message }
+        };
+    }
+};
+
+
+--------------------------------------------------------------
+
+curl -X POST "https://myfuncapp-.azurewebsites.net/api/HttpTrigger1"  -H "Content-Type: application/json" -d '{"emailAddress": "skype@gmail.com"}'
+
+
+--------------------------------------------------------------
+
+const https = require('https');
+
+module.exports = async function (context, req) {
+    try {
+        // 1. Read all variables from the incoming JSON body
+        const { email, itemid, item, price } = req.body || {};
+
+        if (!email) {
+            context.res = {
+                status: 400,
+                body: { error: 'Please provide an email address in the JSON body.' }
+            };
+            return;
+        }
+
+        const logicAppUrl = process.env.LOGIC_APP_URL;
+        if (!logicAppUrl) {
+            context.res = {
+                status: 500,
+                body: { error: 'LOGIC_APP_URL is missing in Environment Variables.' }
+            };
+            return;
+        }
+
+        // 2. Forward email, itemid, item, and price to the Logic App
+        const postData = JSON.stringify({
+            email,
+            itemid,
+            item,
+            price
+        });
+
+        const logicAppStatus = await new Promise((resolve, reject) => {
+            const request = https.request(logicAppUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(postData)
+                }
+            }, (response) => {
+                response.resume();
+                resolve(response.statusCode);
+            });
+
+            request.on('error', reject);
+            request.write(postData);
+            request.end();
+        });
+
+        // 3. Return confirmation
+        context.res = {
+            status: 200,
+            body: {
+                status: 'triggered',
+                logicAppStatus,
+                sentData: { email, itemid, item, price }
+            }
+        };
+    } catch (err) {
+        context.log.error('Function failed:', err);
+        context.res = {
+            status: 500,
+            body: { error: err.message }
+        };
+    }
+};
+
+
+
+----------------------------------------------------------------------
+
+curl -X POST "https://azurewebsites.net" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "angshumanskype@gmail.com",
+    "itemid": "101",
+    "item": "Wireless Mouse",
+    "price": 25.99
+  }'
+
